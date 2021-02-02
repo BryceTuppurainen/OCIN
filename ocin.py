@@ -41,7 +41,7 @@ testset = torch.utils.data.DataLoader(test, batch_size=16, shuffle=True)
 
 
 
-#for data in trainset:
+#sfor data in trainset:
 	#print(data) # Commented out for now as this isn't required
 	#pyplot.imshow(data[0][0].view(28, 28)) # Use the library matplotlib to show the first handwritten image to the user for debugging (note that it was randomised earlier)
 	#pyplot.show()
@@ -70,10 +70,23 @@ class Network(nn.Module):
 
 liveNetwork = Network()
 
+
+# LOAD THE BEST EXISTING MODEL IF IT EXISTS
+import os.path
+
+if os.path.isfile('MODELS/optimal.pt'):
+	print("Current optimal model found and loaded!\n")
+	liveNetwork = torch.load('MODELS/optimal.pt')
+else:
+	print("No optimal.pt model found in MODELS/optimal.pt! Initialising new model...")
+	os.mkdir("MODELS")
+	file = open("MODELS/optimal.pt", "a")
+	file.close()
+
 # SETTING UP THE OPTIMIZER TO TRAIN THE NETWORK
 import torch.optim as optim
 
-optimizer = optim.Adam(liveNetwork.parameters(), lr=0.001, ) # setting up a learning rate of 0.001
+optimizer = optim.Adam(liveNetwork.parameters(), lr=0.001) # setting up a learning rate of 0.001
 
 epochs = int(input("Number of epochs to run? > ")) # Number of times passing through the whole dataset
 print("Beggining training of the MNIST dataset through "+str(epochs)+" epochs!")
@@ -86,4 +99,25 @@ for epoch in range(epochs):
 		loss.backward() # The magic backpropogation method that pytorch has included in the Adam optimizer, documentation is online
 		optimizer.step() # Adjust the bias and weights of the network based on the backpropogation from the previous line
 	print("\nEpoch: "+str(epoch+1)+" of "+str(epochs)+" Current loss: "+str(loss.item()))
-print("\nFinal loss after "+str(epochs)+" epochs was: "+str(loss.item()))
+print("\nFinal loss after "+str(epochs)+" epochs was: "+str(loss.item())+"\n")
+
+# EVALUATION OF NETWORK ACCURACY
+valid = 0
+total = 0
+
+print("Beginning evaluation of network...\n")
+
+with torch.no_grad():
+	for data in trainset:
+		pixels, target = data
+		output = liveNetwork(pixels.view(-1, 784))
+		for idx, i in enumerate(output):
+			if torch.argmax(i) == target[idx]:
+				valid += 1
+			total += 1
+
+print("After evaluating against "+str(total)+" images the final accuracy was: "+str(100*round(valid/total, 10))+"%\n")
+
+# SAVE THE CURRENT MODEL STATE
+print("Saving the model state in MODELS/optimal.pt")
+torch.save(liveNetwork, 'MODELS/optimal.pt')
